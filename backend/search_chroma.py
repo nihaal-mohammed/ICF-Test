@@ -1,6 +1,6 @@
 import chromadb
 
-from backend.vector_db_pipline import vectorize_text_segments
+from BackEnd.vector_db_pipline import vectorize_text_segments
 
 
 def search_chroma(
