@@ -39,7 +39,7 @@ def download_html_assets(url: str, save_dir: str = HTML_DIR):
         print(f"[✗] Failed to download HTML from {url}: {e}")
 
 
-def load_html_files_from_directory(directory: str) -> List[str]:
+def load_html_files_from_directory(directory: str) -> list[str]:
     """
     Loads all HTML files from a specified directory.
 
@@ -49,10 +49,23 @@ def load_html_files_from_directory(directory: str) -> List[str]:
     Returns:
         List[str]: A list of HTML strings loaded from the files.
     """
-    # TODO: List files in the directory
-    # TODO: Filter for .html or .htm files
-    # TODO: Read the contents of each file and append to a list of strings
-    pass
+    html_contents = []
+
+    if not os.path.exists(directory):
+        print(f"[✗] Directory '{directory}' does not exist.")
+        return []
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".html") or filename.endswith(".htm"):
+            filepath = os.path.join(directory, filename)
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    html_contents.append(f.read())
+            except Exception as e:
+                print(f"[✗] Could not read {filename}: {e}")
+
+    print(f"[✓] Loaded {len(html_contents)} HTML file(s) from '{directory}'")
+    return html_contents
 
 
 def extract_text_from_html(html_content: str) -> List[str]:
