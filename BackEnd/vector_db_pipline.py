@@ -1,5 +1,6 @@
 import os
 from typing import List
+
 import chromadb
 import requests
 from bs4 import BeautifulSoup
@@ -158,39 +159,44 @@ def upload_embeddings_to_chroma(
 
 
 def html_to_chroma_pipeline(url: str):
-    """
-    Full pipeline: downloads from URL, extracts text, vectorizes it, and uploads to Chroma.
-
-    Args:
-        url (str): The source URL to fetch and process.
-
-    Returns:
-        None
-    """
-    # Step 1: Download HTML and save to local directory
+    print(f"\n🌐 Step 1: Downloading HTML from {url}")
     download_html_assets(url)
 
-    # # Step 2: Load HTML files from directory
-    # html_files = load_html_files_from_directory(HTML_DIR)
+    print("📂 Step 2: Loading HTML files...")
+    html_files = load_html_files_from_directory(HTML_DIR)
+    print(f"  └ Loaded {len(html_files)} HTML file(s)")
 
-    # all_text_segments = []
-    # all_ids = []
+    all_text_segments = []
+    all_ids = []
 
-    # # Step 3: Extract text from each HTML file
-    # for i, html_content in enumerate(html_files):
-    #     # Extract meaningful text segments
-    #     segments = extract_text_from_html(html_content)
-    #     all_text_segments.extend(segments)
-    #     # Generate unique IDs (e.g., "doc_0_0", "doc_0_1", etc.)
-    #     all_ids.extend([f"doc_{i}_{j}" for j in range(len(segments))])
+    print("📝 Step 3: Extracting text segments from HTML...")
+    for i, html_content in enumerate(html_files):
+        segments = extract_text_from_html(html_content)
+        print(f"  └ File {i}: extracted {len(segments)} segments")
 
-    # # Step 4: Vectorize the extracted text
-    # embeddings = vectorize_text_segments(all_text_segments)
+        all_text_segments.extend(segments)
+        all_ids.extend([f"doc_{i}_{j}" for j in range(len(segments))])
 
-    # # Step 5: Upload vectors + metadata to Chroma DB
-    # upload_embeddings_to_chroma(embeddings, all_text_segments, all_ids)
+    if not all_text_segments:
+        print("[✗] No text segments extracted. Exiting.")
+        return
 
-# Optional main section
+    print(f"\n🔍 Total text segments to embed: {len(all_text_segments)}")
+
+    print("🧠 Step 4: Vectorizing text segments ...")
+    embeddings = vectorize_text_segments(all_text_segments)
+    print(f"  └ Got {len(embeddings)} embeddings")
+
+    if not embeddings:
+        print("[✗] Embedding generation failed or returned nothing.")
+        return
+
+    print("📤 Step 5: Uploading to ChromaDB...")
+    upload_embeddings_to_chroma(embeddings, all_text_segments, all_ids)
+
+    print("✅ Pipeline complete!")
+
+
 if __name__ == "__main__":
     # Example usage
     target_url = "https://friscomasjid.org/programs/events"
