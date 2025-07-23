@@ -2,12 +2,10 @@ import os
 from typing import List
 import requests
 from bs4 import BeautifulSoup
-# from bs4 import BeautifulSoup
-# import openai
-# import chromadb
-# from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
 
 HTML_DIR = "./html_files"
+
 
 def download_html_assets(url: str, save_dir: str = HTML_DIR):
     """
@@ -123,10 +121,9 @@ def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
     Returns:
         List[List[float]]: A list of vector embeddings.
     """
-    # TODO: Set OpenAI API key
-    # TODO: Use `openai.Embedding.create` with a model like 'text-embedding-3-small' or 'text-embedding-ada-002'
-    # TODO: Return list of embeddings corresponding to input text
-    pass
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    embeddings = model.encode(text_segments, convert_to_numpy=True).tolist()
+    return embeddings
 
 
 def upload_embeddings_to_chroma(embeddings: List[List[float]], documents: List[str], ids: List[str]):
