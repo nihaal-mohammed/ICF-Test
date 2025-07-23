@@ -1,6 +1,7 @@
 import os
 from typing import List
 import requests
+from bs4 import BeautifulSoup
 # from bs4 import BeautifulSoup
 # import openai
 # import chromadb
@@ -78,10 +79,38 @@ def extract_text_from_html(html_content: str) -> List[str]:
     Returns:
         List[str]: A list of extracted plain text segments (e.g., paragraphs, headings).
     """
-    # TODO: Use `BeautifulSoup` to parse the HTML content
-    # TODO: Extract text elements (e.g., <p>, <h1>, <li>, etc.)
-    # TODO: Clean/Categorize text as needed and return as a list of strings
-    pass
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Extract common text-bearing tags
+    text_elements = soup.find_all(["h1", "h2", "h3", "h4", "p", "li", "span", "a"])
+
+    # Extract text, strip whitespace, and filter out empty strings
+    segments = [
+        el.get_text(strip=True) for el in text_elements if el.get_text(strip=True)
+    ]
+
+    # Optional: Filter out short or repetitive/junk text (customize as needed)
+    filtered_segments = [
+        seg
+        for seg in segments
+        if len(seg) > 30
+        and not any(
+            kw in seg.lower()
+            for kw in [
+                "donate",
+                "login",
+                "home",
+                "frisco masjid",
+                "contact",
+                "prayer times",
+            ]
+        )
+    ]
+
+    # Remove duplicates
+    unique_segments = list(set(filtered_segments))
+
+    return unique_segments
 
 
 def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
