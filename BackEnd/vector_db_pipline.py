@@ -1,5 +1,6 @@
 import os
 from typing import List
+import chromadb
 import requests
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
@@ -126,7 +127,9 @@ def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
     return embeddings
 
 
-def upload_embeddings_to_chroma(embeddings: List[List[float]], documents: List[str], ids: List[str]):
+def upload_embeddings_to_chroma(
+    embeddings: List[List[float]], documents: List[str], ids: List[str]
+):
     """
     Uploads vector embeddings along with their original documents into a persistent Chroma database.
 
@@ -138,10 +141,20 @@ def upload_embeddings_to_chroma(embeddings: List[List[float]], documents: List[s
     Returns:
         None
     """
-    # TODO: Initialize persistent Chroma client using `chromadb.Client(Settings(...))`
-    # TODO: Create or connect to a collection
-    # TODO: Use .add(documents=..., embeddings=..., ids=...) to upload data
-    pass
+    try:
+        # ✅ Initialize persistent ChromaDB client
+        client = chromadb.PersistentClient(path="chroma")
+
+        # ✅ Create or connect to a collection
+        collection = client.get_or_create_collection(name="frisco_events")
+
+        # ✅ Upload documents, embeddings, and their IDs
+        collection.add(documents=documents, embeddings=embeddings, ids=ids)
+
+        print(f"[✓] Uploaded {len(ids)} embeddings to ChromaDB.")
+
+    except Exception as e:
+        print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 
 def html_to_chroma_pipeline(url: str):
