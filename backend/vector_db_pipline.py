@@ -79,47 +79,22 @@ def load_html_files_from_directory(directory: str) -> list[str]:
 
 
 def extract_text_from_html(html_content: str) -> List[str]:
-    """
-    Converts an HTML string into plain text, breaking it down into text elements.
-
-    Args:
-        html_content (str): Raw HTML string.
-
-    Returns:
-        List[str]: A list of extracted plain text segments (e.g., paragraphs, headings).
-    """
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # Extract common text-bearing tags
-    text_elements = soup.find_all(["h1", "h2", "h3", "h4", "p", "li", "span", "a"])
+    # Remove noisy tags
+    for tag in soup(["script", "style", "nav", "footer", "header", "form", "noscript"]):
+        tag.decompose()
 
-    # Extract text, strip whitespace, and filter out empty strings
+    # Extract clean text
+    text_elements = soup.find_all(["h1", "h2", "h3", "h4", "p", "li"])
     segments = [
         el.get_text(strip=True) for el in text_elements if el.get_text(strip=True)
     ]
 
-    # Optional: Filter out short or repetitive/junk text (customize as needed)
     filtered_segments = [
-        seg
-        for seg in segments
-        if len(seg) > 30
-        and not any(
-            kw in seg.lower()
-            for kw in [
-                "donate",
-                "login",
-                "home",
-                "frisco masjid",
-                "contact",
-                "prayer times",
-            ]
-        )
+        seg for seg in segments if len(seg) > 30 and "frisco" not in seg.lower()
     ]
-
-    # Remove duplicates
-    unique_segments = list(set(filtered_segments))
-
-    return unique_segments
+    return list(set(filtered_segments))
 
 
 def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
