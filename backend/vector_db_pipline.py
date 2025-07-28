@@ -9,35 +9,44 @@ from sentence_transformers import SentenceTransformer
 HTML_DIR = "./html_files"
 
 
-def download_html_assets(url: str, save_dir: str = HTML_DIR):
-    """
-    Downloads all HTML assets from a given URL and saves them in the specified directory.
+from urllib.parse import urljoin, urlparse
 
-    Args:
-        url (str): The target webpage to download.
-        save_dir (str): Directory where the HTML files should be stored.
+VISITED = set()
 
-    Returns:
-        None
-    """
-    # Make sure the directory exists
-    os.makedirs(save_dir, exist_ok=True)
+
+def is_internal(url):
+    return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
+
+
+def sanitize_filename(url):
+    path = urlparse(url).path.strip("/").replace("/", "_")
+    return path or "index"
+
+
+def download_html_assets_recursive(url: str, save_dir: str = HTML_DIR):
+    if url in VISITED or not is_internal(url):
+        return
+    VISITED.add(url)
 
     try:
         response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raise error for bad HTTP status codes
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        # Create a filename-safe version of the URL
-        filename = "index.html"
-        filepath = os.path.join(save_dir, filename)
-
-        with open(filepath, "w", encoding="utf-8") as f:
+        # Save page
+        os.makedirs(save_dir, exist_ok=True)
+        filename = sanitize_filename(url) + ".html"
+        with open(os.path.join(save_dir, filename), "w", encoding="utf-8") as f:
             f.write(response.text)
+        print(f"[✓] Saved: {url}")
 
-        print(f"[✓] HTML downloaded and saved to {filepath}")
+        # Recurse
+        for link in soup.find_all("a", href=True):
+            next_url = urljoin(url, link["href"])
+            download_html_assets_recursive(next_url, save_dir)
 
-    except requests.exceptions.RequestException as e:
-        print(f"[✗] Failed to download HTML from {url}: {e}")
+    except Exception as e:
+        print(f"[✗] Failed at {url}: {e}")
 
 
 def load_html_files_from_directory(directory: str) -> list[str]:
