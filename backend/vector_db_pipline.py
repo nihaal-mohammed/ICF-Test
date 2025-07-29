@@ -81,12 +81,19 @@ def load_html_files_from_directory(directory: str) -> list[str]:
 def extract_text_from_html(html_content: str) -> List[str]:
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # Remove noisy tags
-    for tag in soup(["script", "style", "nav", "footer", "header", "form", "noscript"]):
+    # Find the specific content container
+    main_div = soup.find("div", class_="article-content-main")
+    if not main_div:
+        return []
+
+    # Remove noisy tags within that div
+    for tag in main_div.find_all(
+        ["script", "style", "nav", "footer", "header", "form", "noscript"]
+    ):
         tag.decompose()
 
-    # Extract clean text
-    text_elements = soup.find_all(["h1", "h2", "h3", "h4", "p", "li"])
+    # Extract clean text only within that div
+    text_elements = main_div.find_all(["h1", "h2", "h3", "h4", "p", "li"])
     segments = [
         el.get_text(strip=True) for el in text_elements if el.get_text(strip=True)
     ]
@@ -143,8 +150,8 @@ def upload_embeddings_to_chroma(
 
 
 def html_to_chroma_pipeline(url: str):
-    print(f"\n🌐 Step 1: Downloading HTML from {url}")
-    download_html_assets(url)
+    print(f"\n🌐 Step 1: Crawling {url}")
+    download_html_assets_recursive(url)
 
     print("📂 Step 2: Loading HTML files...")
     html_files = load_html_files_from_directory(HTML_DIR)
@@ -182,6 +189,6 @@ def html_to_chroma_pipeline(url: str):
 
 
 if __name__ == "__main__":
-    # Example usage
-    target_url = "https://friscomasjid.org/programs/events"
+    # Start crawling from homepage instead of just /programs/events
+    target_url = "https://friscomasjid.org/"
     html_to_chroma_pipeline(target_url)
