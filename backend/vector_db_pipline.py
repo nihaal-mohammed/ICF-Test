@@ -79,6 +79,21 @@ def load_html_files_from_directory(directory: str) -> list[str]:
 
 
 def extract_text_from_html(html_content: str) -> List[str]:
+    from itertools import chain
+
+    def chunk_text(texts: List[str], chunk_size=250, overlap=50) -> List[str]:
+        """
+        Combine and chunk text segments into overlapping chunks of words.
+        """
+        all_text = " ".join(texts)
+        words = all_text.split()
+        chunks = []
+        for i in range(0, len(words), chunk_size - overlap):
+            chunk = words[i : i + chunk_size]
+            if len(chunk) >= 30:
+                chunks.append(" ".join(chunk))
+        return chunks
+
     soup = BeautifulSoup(html_content, "html.parser")
 
     # Find the specific content container
@@ -92,16 +107,19 @@ def extract_text_from_html(html_content: str) -> List[str]:
     ):
         tag.decompose()
 
-    # Extract clean text only within that div
+    # Extract text from clean tags
     text_elements = main_div.find_all(["h1", "h2", "h3", "h4", "p", "li"])
     segments = [
         el.get_text(strip=True) for el in text_elements if el.get_text(strip=True)
     ]
 
-    filtered_segments = [
-        seg for seg in segments if len(seg) > 30 and "frisco" not in seg.lower()
-    ]
-    return list(set(filtered_segments))
+    # Filter out ones containing "frisco"
+    segments = [seg for seg in segments if "frisco" not in seg.lower()]
+
+    # Chunk long combined text
+    chunked_segments = chunk_text(segments)
+
+    return list(set(chunked_segments))
 
 
 def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
@@ -189,6 +207,14 @@ def html_to_chroma_pipeline(url: str):
 
 
 if __name__ == "__main__":
-    # Start crawling from homepage instead of just /programs/events
-    target_url = "https://friscomasjid.org/"
-    html_to_chroma_pipeline(target_url)
+    sample_file = "./html_files/donate.html"  # Change to any file you know exists
+    if os.path.exists(sample_file):
+        with open(sample_file, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        segments = extract_text_from_html(html_content)
+        print(f"\n🧩 Extracted {len(segments)} chunk(s):")
+        for i, chunk in enumerate(segments, 1):
+            print(f"\n--- Chunk {i} ---\n{chunk}\n")
+    else:
+        print("⚠️ Sample file not found.")
