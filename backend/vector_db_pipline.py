@@ -207,14 +207,6 @@ def html_to_chroma_pipeline(url: str):
 
 
 if __name__ == "__main__":
-    sample_file = "./html_files/donate.html"  # Change to any file you know exists
-    if os.path.exists(sample_file):
-        with open(sample_file, "r", encoding="utf-8") as f:
-            html_content = f.read()
-
-        segments = extract_text_from_html(html_content)
-        print(f"\n🧩 Extracted {len(segments)} chunk(s):")
-        for i, chunk in enumerate(segments, 1):
-            print(f"\n--- Chunk {i} ---\n{chunk}\n")
-    else:
-        print("⚠️ Sample file not found.")
+    # Start crawling from homepage instead of just /programs/events
+    target_url = "https://friscomasjid.org/"
+    html_to_chroma_pipeline(target_url)
