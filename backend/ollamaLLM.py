@@ -18,11 +18,46 @@ class AskRequest(BaseModel):
     question: str
     history: list = []
 
-context = """Due to our extensive community growth over the past few years, Sunday School has adopted a two-shift schedule to accommodate additional students while maintaining a productive environment.
-
+context = """
+Sunday School Times:
 Students in kindergarten to third grade are in the first shift, which is from 9:00 AM to 11:00 AM.
 
-Students in fourth to eighth grade are in the second shift, which is from 11:45 AM to 2:15 PM."""
+Students in fourth to eighth grade are in the second shift, which is from 11:45 AM to 2:15 PM.
+
+Quran Academy Times:
+QAIDAH (1 Hour, 4 Days / Week)
+Monday-Thursday, 4:00, 5:00, or 6:00 PM
+
+NAZIRAH (1 Hour, 4 Days / Week)
+Monday-Thursday, 4:00, 5:00, or 6:00 PM
+OR Saturday, 12:00 - 2:00 PM or 2:00 - 4:00 PM
+
+PART-TIME HIFDH (2 Hours, 4 Days / Week)
+Monday-Thursday, 5:00 - 7:00 PM
+
+FULL-TIME HIFDH (6 Hours, 5 Days / Week)
+Monday-Friday, 8:00 AM - 2:00 PM
+
+Safwah Seminary:
+SCHEDULE
+Safwah 101
+Tuesdays - 6:00pm - 6:45pm
+Saturdays - 11:00am - 11:45pm
+
+Safwah 102
+Thursdays - 6:00pm - 6:45pm
+Saturdays - 12:00pm - 12:45pm
+
+Safwah 201
+Tuesdays - 7:00pm - 7:45pm
+Saturdays - 1:00pm - 1:45pm
+
+Safwah 202
+Thursdays - 7:00pm - 7:45pm
+Saturdays - 2:15pm - 3:00pm
+"""
+
+
 
 template = """
 Here is the conversation history:
