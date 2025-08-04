@@ -1,4 +1,5 @@
 import os
+import re
 from typing import List
 
 import chromadb
@@ -29,13 +30,28 @@ def is_internal(url):
     return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
 
 
+def is_unnecessary_url(url: str) -> bool:
+    """
+    Returns True if the URL matches patterns that should be skipped.
+    """
+    patterns = [
+        r"/events/\d{4}/\d{2}/\d{2}",  # e.g., /events/2015/03/04
+        r"/events/\d{4}/\d{2}",  # e.g., /events/2020/05
+        r"/events/\d{4}$",  # e.g., /events/2017
+        r"calendar",  # e.g., calendar export links
+        r"\.ics$",  # iCal files
+        r"action=download",  # download links
+    ]
+    return any(re.search(pattern, url) for pattern in patterns)
+
+
 def sanitize_filename(url):
     path = urlparse(url).path.strip("/").replace("/", "_")
     return path or "index"
 
 
 def download_html_assets_recursive(url: str, save_dir: str = HTML_DIR):
-    if url in VISITED or not is_internal(url):
+    if url in VISITED or not is_internal(url) or is_unnecessary_url(url):
         return
     VISITED.add(url)
 
