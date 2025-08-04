@@ -14,6 +14,17 @@ from urllib.parse import urljoin, urlparse
 VISITED = set()
 
 
+def is_url(path: str) -> bool:
+    parsed = urlparse(path)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def is_directory_path(path: str) -> bool:
+    return os.path.isdir(path) or (
+        not is_url(path) and (path.startswith(".") or "/" in path or "\\" in path)
+    )
+
+
 def is_internal(url):
     return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
 
@@ -167,13 +178,21 @@ def upload_embeddings_to_chroma(
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 
-def html_to_chroma_pipeline(url: str):
-    print(f"\n🌐 Step 1: Crawling {url}")
-    download_html_assets_recursive(url)
-
-    print("📂 Step 2: Loading HTML files...")
-    html_files = load_html_files_from_directory(HTML_DIR)
-    print(f"  └ Loaded {len(html_files)} HTML file(s)")
+def html_to_chroma_pipeline(source: str):
+    source_is_url = is_url(source)
+    source_is_directory = is_directory_path(source)
+    if not source_is_url and not source_is_directory:
+        print(f"[✗] Invalid source: {source}. Must be a URL or directory path.")
+        return
+    elif source_is_url:
+        print(f"\n🌐 Step 1: Crawling {source}")
+        download_html_assets_recursive(source)
+    else:
+        print("📂 Step 2: Loading HTML files...")
+        html_files = load_html_files_from_directory(
+            source if source_is_directory else HTML_DIR
+        )
+        print(f"  └ Loaded {len(html_files)} HTML file(s)")
 
     all_text_segments = []
     all_ids = []
@@ -209,4 +228,6 @@ def html_to_chroma_pipeline(url: str):
 if __name__ == "__main__":
     # Start crawling from homepage instead of just /programs/events
     target_url = "https://friscomasjid.org/"
-    html_to_chroma_pipeline(target_url)
+    target_directory = "html_files"
+    # html_to_chroma_pipeline(target_url)  # Uncomment to crawl from URL
+    html_to_chroma_pipeline(target_directory)
