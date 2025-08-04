@@ -2,7 +2,7 @@ import json
 
 import chromadb
 
-from BackEnd.vector_db_pipline import vectorize_text_segments
+from vector_db_pipline import vectorize_text_segments
 
 
 def search_chroma(
