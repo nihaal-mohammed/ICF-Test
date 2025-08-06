@@ -54,10 +54,14 @@ async def ask(request: AskRequest):
     question = request.question
     history = request.history + [f"User: {question}"]
 
+    print("hello")
+
     try:
         # 🧠 Use Chroma to fetch relevant context
         relevant_chunks = search_chroma(question)
-        
+        print("hello2")
+        print(relevant_chunks)
+
         # 🔗 Process the returned chunks
         # search_chroma returns results["documents"] which is a list of lists
         if relevant_chunks and len(relevant_chunks) > 0:
