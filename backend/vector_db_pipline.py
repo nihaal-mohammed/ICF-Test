@@ -214,23 +214,6 @@ def upload_embeddings_to_chroma(
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 
-<<<<<<< HEAD
-def html_to_chroma_pipeline(source: str):
-    source_is_url = is_url(source)
-    source_is_directory = is_directory_path(source)
-    if not source_is_url and not source_is_directory:
-        print(f"[✗] Invalid source: {source}. Must be a URL or directory path.")
-        return
-    elif source_is_url:
-        print(f"\n🌐 Step 1: Crawling {source}")
-        download_html_assets_recursive(source)
-    else:
-        print("📂 Step 2: Loading HTML files...")
-        html_files = load_html_files_from_directory(
-            source if source_is_directory else HTML_DIR
-        )
-        print(f"  └ Loaded {len(html_files)} HTML file(s)")
-=======
 def html_to_chroma_pipeline(url: str, i: int) -> bool:
     #print(f"\n🌐 Step 1: Crawling {url}")
     #download_html_assets_recursive(url)
