@@ -143,24 +143,12 @@ async def ask(request: AskRequest):
     print("hello")
 
     try:
-<<<<<<< HEAD
-        print(f"🔍 Searching for: {question}")
-        
-        # Use your search function
-        relevant_chunks = search_chroma_function(question)
-        
-        print(f"📊 Raw search results type: {type(relevant_chunks)}")
-        print(f"📊 Raw search results length: {len(relevant_chunks) if relevant_chunks else 0}")
-        
-        # Process the returned chunks
-=======
         # 🧠 Use Chroma to fetch relevant context
         relevant_chunks = search_chroma(question)
         print("hello2")
         print(relevant_chunks)
 
         # 🔗 Process the returned chunks
->>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
         # search_chroma returns results["documents"] which is a list of lists
         dynamic_context = ""
         chunks_found = 0
