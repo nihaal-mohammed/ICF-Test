@@ -257,12 +257,6 @@ def html_to_chroma_pipeline(url: str, i: int) -> bool:
 
 if __name__ == "__main__":
     # Start crawling from homepage instead of just /programs/events
-<<<<<<< HEAD
-    target_url = "https://friscomasjid.org/"
-    target_directory = "html_files"
-    # html_to_chroma_pipeline(target_url)  # Uncomment to crawl from URL
-    html_to_chroma_pipeline(target_directory)
-=======
     website_url = "https://friscomasjid.org"
     domain = "https://friscomasjid.org" 
     filtered_links = get_filtered_absolute_links(website_url, domain)
@@ -279,4 +273,3 @@ if __name__ == "__main__":
     print()
     print(the_bad_list)
         
->>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
