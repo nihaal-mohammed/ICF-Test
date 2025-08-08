@@ -221,7 +221,6 @@ def html_to_chroma_pipeline(url: str, i: int) -> bool:
     #print("📂 Step 2: Loading HTML files...")
     #html_files = load_html_files_from_directory(HTML_DIR)
     #print(f"  └ Loaded {len(html_files)} HTML file(s)")
->>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
     all_text_segments = []
     all_ids = []
