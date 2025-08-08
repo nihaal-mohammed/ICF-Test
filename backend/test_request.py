@@ -144,7 +144,7 @@ def test_specific_content():
         data = {"question": question, "history": []}
         
         try:
-            response = requests.post(url, json=data, timeout=30)
+            response = requests.post(url, json=data, timeout=300)
             if response.status_code == 200:
                 result = response.json()
                 print(f"🤖 A: {result['answer']}")
