@@ -3,7 +3,10 @@ import json
 import chromadb
 
 from vector_db_pipline import vectorize_text_segments
+<<<<<<< HEAD
 
+=======
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
 def search_chroma(
     query: str,
@@ -29,7 +32,9 @@ def search_chroma(
         # embed query
         query_embeddings = vectorize_text_segments([query])[0]
         # ✅ Upload documents, embeddings, and their IDs
-        results = collection.query(query_embeddings=query_embeddings, n_results=10)
+        results = collection.query(query_embeddings=query_embeddings, n_results=5)
+
+        print(results)
 
         # print(
         #     f"[✓] Search results for query '{query}': {len(results['documents'])} found."
@@ -42,7 +47,13 @@ def search_chroma(
 
 print(
     json.dumps(
+<<<<<<< HEAD
         search_chroma("funeral"),
+=======
+        search_chroma(
+            ""
+            ),
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
         indent=4,
     )
 )

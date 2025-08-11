@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
+<<<<<<< HEAD
 import json
 import chromadb
 import os
@@ -71,6 +72,15 @@ except ImportError as e:
             return [["Search functionality not available - please fix import errors"]]
         
         search_chroma_function = search_chroma
+=======
+# Import with error handling for the search function
+try:
+    from search_chroma import search_chroma
+except ImportError as e:
+    print(f"Warning: Could not import search_chroma: {e}")
+    def search_chroma(query):
+        return [["No search functionality available - please fix the import error"]]
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
 app = FastAPI()
 
@@ -87,7 +97,11 @@ class AskRequest(BaseModel):
     history: list = []
 
 template = """
+<<<<<<< HEAD
 You are a helpful assistant for the Islamic Center of Frisco (ICF). Use the provided context to answer questions accurately and helpfully.
+=======
+You are a helpful assistant for the Islamic Center of Frisco. Use the provided context to answer questions accurately and helpfully.
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
 Here is the conversation history:
 {history}
@@ -98,12 +112,19 @@ Here is the relevant context from the Islamic Center of Frisco:
 User Question: {question}
 
 Instructions:
+<<<<<<< HEAD
 - Answer based ONLY on the provided context when available
 - If the context contains relevant information, use it to answer the question
 - If the context doesn't contain enough information, clearly state that you don't have that information in your database
 - Be informative and helpful, but don't make up information not found in the context
 - Keep responses natural and conversational
 - If no relevant context is found, say "I don't have information about that in my current database"
+=======
+- Answer based on the provided context when relevant
+- Be informative and helpful
+- If the context doesn't fully answer the question, provide what information you can
+- Keep responses natural and conversational
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
 Answer:
 """
@@ -140,7 +161,10 @@ async def ask(request: AskRequest):
     # Add current question to history
     current_conversation = history + [f"User: {question}"]
 
+    print("hello")
+
     try:
+<<<<<<< HEAD
         print(f"🔍 Searching for: {question}")
         
         # Use your search function
@@ -154,11 +178,21 @@ async def ask(request: AskRequest):
         dynamic_context = ""
         chunks_found = 0
         
+=======
+        # 🧠 Use Chroma to fetch relevant context
+        relevant_chunks = search_chroma(question)
+        print("hello2")
+        print(relevant_chunks)
+
+        # 🔗 Process the returned chunks
+        # search_chroma returns results["documents"] which is a list of lists
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
         if relevant_chunks and len(relevant_chunks) > 0:
             # Flatten the nested list structure and join chunks
             all_chunks = []
             for chunk_list in relevant_chunks:
                 if isinstance(chunk_list, list):
+<<<<<<< HEAD
                     # Filter out empty strings and error messages
                     valid_chunks = [chunk for chunk in chunk_list if chunk.strip() and not chunk.startswith("No search functionality") and not chunk.startswith("Error searching") and not chunk.startswith("No documents found")]
                     all_chunks.extend(valid_chunks)
@@ -185,12 +219,24 @@ async def ask(request: AskRequest):
         
         # Generate response using the chain
         print("🤖 Generating response with context...")
+=======
+                    all_chunks.extend(chunk_list)
+                else:
+                    all_chunks.append(chunk_list)
+            
+            dynamic_context = "\n\n".join(all_chunks)
+        else:
+            dynamic_context = "No relevant context found."
+
+        # 🗣️ Send to model
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
         answer = chain.invoke({
             "context": dynamic_context,
             "question": question,
             "history": history_text
         })
 
+<<<<<<< HEAD
         # Update history with the new exchange
         updated_history = current_conversation + [f"Bot: {answer}"]
         
@@ -256,6 +302,27 @@ async def test_search():
         }
     except Exception as e:
         return {"error": str(e)}
+=======
+        history.append(f"Bot: {answer}")
+        
+        return {
+            'answer': answer, 
+            'history': history,
+            'context_chunks_found': len(relevant_chunks) if relevant_chunks else 0
+        }
+
+    except Exception as e:
+        print(f"Error in ask endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+>>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
+
+@app.get('/')
+async def root():
+    return {"message": "Islamic Center of Frisco RAG System is running!"}
+
+@app.get('/health')
+async def health():
+    return {"status": "healthy", "message": "API is working correctly"}
 
 if __name__ == '__main__':
     print("🚀 Starting Islamic Center of Frisco RAG Server...")
