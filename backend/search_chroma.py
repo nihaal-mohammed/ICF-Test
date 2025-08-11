@@ -1,12 +1,8 @@
 import json
 
 import chromadb
-
 from vector_db_pipline import vectorize_text_segments
-<<<<<<< HEAD
 
-=======
->>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
 
 def search_chroma(
     query: str,
@@ -47,13 +43,7 @@ def search_chroma(
 
 print(
     json.dumps(
-<<<<<<< HEAD
-        search_chroma("funeral"),
-=======
-        search_chroma(
-            ""
-            ),
->>>>>>> c95953ad9ae35ed3f93b3d874895063a62087613
+        search_chroma(""),
         indent=4,
     )
 )
