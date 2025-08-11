@@ -7,15 +7,13 @@ from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from bs4.element import Comment
 
-
 HTML_DIR = "./html_files"
-
 
 from urllib.parse import urljoin, urlparse
 
 VISITED = set()
 
-the_bad_list = []
+header_and_footer = True
 
 def is_internal(url):
     return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
@@ -67,8 +65,7 @@ def get_filtered_absolute_links(url, domain):
             href = link.get('href')
             if href:
                 absolute_link = urljoin(url, href) 
-                if (absolute_link.startswith(domain) and 
-                    not any(absolute_link.endswith(ext) for ext in excluded_extensions)):
+                if (absolute_link.startswith(domain) and not any(absolute_link.endswith(ext) for ext in excluded_extensions)):
                     print(absolute_link)
                     absolute_links.add(absolute_link)
                     counter+=1
@@ -167,7 +164,7 @@ def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
     Returns:
         List[List[float]]: A list of vector embeddings.
     """
-    model = SentenceTransformer("all-MiniLM-L6-v2")
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
     embeddings = model.encode(text_segments, convert_to_numpy=True).tolist()
     return embeddings
 
@@ -202,6 +199,16 @@ def upload_embeddings_to_chroma(
     except Exception as e:
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
+def extract_prayer_times_and_contact():
+    response = requests.get("https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes")
+    contact_string = """
+    About Us The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas.  Along with providing
+    daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary
+    educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling. 
+    Contact Us Address: 11137 Frisco St, Frisco TX 75033 Main Phone: (469) 252-4532 | Clinic Phone: (469) 213-8707 | contact@friscomasjid.org EIN: 20-8679388
+    """
+    upload_embeddings_to_chroma(vectorize_text_segments(contact_string), contact_string, "doc_-1_-1")
+    return response.text.split("]")
 
 def html_to_chroma_pipeline(url: str, i: int) -> bool:
     #print(f"\n🌐 Step 1: Crawling {url}")
@@ -215,7 +222,11 @@ def html_to_chroma_pipeline(url: str, i: int) -> bool:
     all_ids = []
 
     print("📝 Step 3: Extracting text segments from HTML...")
-    segments = extract_text_from_html(url)
+
+    if(url != "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"):
+        segments = extract_text_from_html(url)
+    else:
+        segments = extract_prayer_times_and_contact()
         #print(f"  └ File {i}: extracted {len(segments)} segments")
     all_text_segments.extend(segments)
     all_ids.extend([f"doc_{i}_{j}" for j in range(len(segments))])
@@ -248,7 +259,10 @@ if __name__ == "__main__":
     # Start crawling from homepage instead of just /programs/events
     website_url = "https://friscomasjid.org"
     domain = "https://friscomasjid.org" 
-    filtered_links = get_filtered_absolute_links(website_url, domain)
+    filtered_links = {"https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"}
+    filtered_links.update(get_filtered_absolute_links(website_url, domain))
+    for element in filtered_links:
+        print(element)
     counter = 0
     bad_links = []
     for i, link in enumerate(filtered_links):
@@ -260,5 +274,4 @@ if __name__ == "__main__":
     print(bad_links)
     print()
     print()
-    print(the_bad_list)
         

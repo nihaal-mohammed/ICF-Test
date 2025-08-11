@@ -21,7 +21,6 @@ def search_chroma(
     try:
         # ✅ Initialize persistent ChromaDB client
         client = chromadb.PersistentClient(path="chroma")
-
         # ✅ Create or connect to a collection
         collection = client.get_or_create_collection(name="frisco_events")
 
@@ -30,7 +29,9 @@ def search_chroma(
         # ✅ Upload documents, embeddings, and their IDs
         results = collection.query(query_embeddings=query_embeddings, n_results=5)
 
-        print(results)
+         # Step 3: Write to a text file
+        # with open('put your own file path here', 'w') as file:
+        #     file.write(json.dumps(results))
 
         # print(
         #     f"[✓] Search results for query '{query}': {len(results['documents'])} found."
@@ -41,11 +42,3 @@ def search_chroma(
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 
-print(
-    json.dumps(
-        search_chroma(
-            ""
-            ),
-        indent=4,
-    )
-)
