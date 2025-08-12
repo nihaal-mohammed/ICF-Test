@@ -237,22 +237,6 @@ def upload_embeddings_to_chroma(
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 
-def extract_prayer_times_and_contact():
-    response = requests.get(
-        "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"
-    )
-    contact_string = """
-    About Us The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas.  Along with providing
-    daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary
-    educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling. 
-    Contact Us Address: 11137 Frisco St, Frisco TX 75033 Main Phone: (469) 252-4532 | Clinic Phone: (469) 213-8707 | contact@friscomasjid.org EIN: 20-8679388
-    """
-    upload_embeddings_to_chroma(
-        vectorize_text_segments(contact_string), contact_string, "doc_-1_-1"
-    )
-    return response.text.split("]")
-
-
 def html_to_chroma_pipeline(url: str, i: int) -> bool:
     # print(f"\n🌐 Step 1: Crawling {url}")
     # download_html_assets_recursive(url)
@@ -324,3 +308,4 @@ if __name__ == "__main__":
     print(bad_links)
     print()
     print()
+    print(the_bad_list)
