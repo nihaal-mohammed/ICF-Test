@@ -1,15 +1,27 @@
-from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama.llms import OllamaLLM
 from vector import retriever
 
 model = OllamaLLM(model="gemma3")
 
 template = """
-You are an exeprt in answering question about events
+You are an assistant for the Islamic Center of Frisco.
 
-Here is the event info: {reviews}
+Answer concisely:
+- Max 2–3 short sentences, or up to 5 bullet points.
+- No filler, no restating the question, no disclaimers.
+- If the user asks for today's prayer times, output ONLY:
+  Fajr: <time>
+  Dhuhr: <time>
+  Asr: <time>
+  Maghrib: <time>
+  Isha: <time>
 
-Here is the question to answer: {question}
+Context:
+{context}
+
+Question:
+{question}
 """
 prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | model
@@ -20,7 +32,7 @@ while True:
     print("\n\n")
     if question == "q":
         break
-    
+
     reviews = retriever.invoke(question)
     result = chain.invoke({"reviews": reviews, "question": question})
     print(result)

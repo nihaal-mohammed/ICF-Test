@@ -1,8 +1,8 @@
 import json
 
 import chromadb
-
 from vector_db_pipline import vectorize_text_segments
+
 
 def search_chroma(
     query: str,
@@ -29,7 +29,7 @@ def search_chroma(
         # ✅ Upload documents, embeddings, and their IDs
         results = collection.query(query_embeddings=query_embeddings, n_results=5)
 
-         # Step 3: Write to a text file
+        # Step 3: Write to a text file
         # with open('put your own file path here', 'w') as file:
         #     file.write(json.dumps(results))
 
@@ -40,5 +40,3 @@ def search_chroma(
 
     except Exception as e:
         print(f"[✗] Failed to upload to ChromaDB: {e}")
-
-

@@ -1,10 +1,10 @@
 import os
+import re
 from typing import List
 
 import chromadb
 import requests
 from bs4 import BeautifulSoup
-from sentence_transformers import SentenceTransformer
 from bs4.element import Comment
 
 HTML_DIR = "./html_files"
@@ -15,8 +15,35 @@ VISITED = set()
 
 header_and_footer = True
 
+
+def is_url(path: str) -> bool:
+    parsed = urlparse(path)
+    return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+
+
+def is_directory_path(path: str) -> bool:
+    return os.path.isdir(path) or (
+        not is_url(path) and (path.startswith(".") or "/" in path or "\\" in path)
+    )
+
+
 def is_internal(url):
     return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
+
+
+def is_unnecessary_url(url: str) -> bool:
+    """
+    Returns True if the URL matches patterns that should be skipped.
+    """
+    patterns = [
+        r"/events/\d{4}/\d{2}/\d{2}",  # e.g., /events/2015/03/04
+        r"/events/\d{4}/\d{2}",  # e.g., /events/2020/05
+        r"/events/\d{4}$",  # e.g., /events/2017
+        r"calendar",  # e.g., calendar export links
+        r"\.ics$",  # iCal files
+        r"action=download",  # download links
+    ]
+    return any(re.search(pattern, url) for pattern in patterns)
 
 
 def sanitize_filename(url):
@@ -25,7 +52,7 @@ def sanitize_filename(url):
 
 
 def download_html_assets_recursive(url: str, save_dir: str = HTML_DIR):
-    if url in VISITED or not is_internal(url):
+    if url in VISITED or not is_internal(url) or is_unnecessary_url(url):
         return
     VISITED.add(url)
 
@@ -48,27 +75,30 @@ def download_html_assets_recursive(url: str, save_dir: str = HTML_DIR):
 
     except Exception as e:
         print(f"[✗] Failed at {url}: {e}")
-        
+
+
 def get_filtered_absolute_links(url, domain):
     try:
         counter = 0
         response = requests.get(url)
-        response.raise_for_status()  
+        response.raise_for_status()
 
-        soup = BeautifulSoup(response.text, 'html.parser')
-        links = soup.find_all('a')
+        soup = BeautifulSoup(response.text, "html.parser")
+        links = soup.find_all("a")
 
         absolute_links = set()
-        excluded_extensions = ('.png', '.jpg', '.jpeg', '.pdf', '.img')
-        
+        excluded_extensions = (".png", ".jpg", ".jpeg", ".pdf", ".img")
+
         for link in links:
-            href = link.get('href')
+            href = link.get("href")
             if href:
-                absolute_link = urljoin(url, href) 
-                if (absolute_link.startswith(domain) and not any(absolute_link.endswith(ext) for ext in excluded_extensions)):
+                absolute_link = urljoin(url, href)
+                if absolute_link.startswith(domain) and not any(
+                    absolute_link.endswith(ext) for ext in excluded_extensions
+                ):
                     print(absolute_link)
                     absolute_links.add(absolute_link)
-                    counter+=1
+                    counter += 1
         print(len(absolute_links))
         return absolute_links
 
@@ -121,7 +151,7 @@ def extract_text_from_html(html_content: str) -> List[str]:
             if len(chunk) >= 30:
                 chunks.append(" ".join(chunk))
         return chunks
-    
+
     response = requests.get(html_content)
     html = response.text
 
@@ -130,7 +160,14 @@ def extract_text_from_html(html_content: str) -> List[str]:
 
     # Step 3: Function to filter visible elements
     def tag_visible(element):
-        if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        if element.parent.name in [
+            "style",
+            "script",
+            "head",
+            "title",
+            "meta",
+            "[document]",
+        ]:
             return False
         if isinstance(element, Comment):
             return False
@@ -189,7 +226,7 @@ def upload_embeddings_to_chroma(
 
         # ✅ Create or connect to a collection
         collection = client.get_or_create_collection(name="frisco_events")
-        #client.delete_collection("frisco_events")
+        # client.delete_collection("frisco_events")
 
         # ✅ Upload documents, embeddings, and their IDs
         collection.add(documents=documents, embeddings=embeddings, ids=ids)
@@ -199,35 +236,25 @@ def upload_embeddings_to_chroma(
     except Exception as e:
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
-def extract_prayer_times_and_contact():
-    response = requests.get("https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes")
-    contact_string = """
-    About Us The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas.  Along with providing
-    daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary
-    educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling. 
-    Contact Us Address: 11137 Frisco St, Frisco TX 75033 Main Phone: (469) 252-4532 | Clinic Phone: (469) 213-8707 | contact@friscomasjid.org EIN: 20-8679388
-    """
-    upload_embeddings_to_chroma(vectorize_text_segments(contact_string), contact_string, "doc_-1_-1")
-    return response.text.split("]")
 
 def html_to_chroma_pipeline(url: str, i: int) -> bool:
-    #print(f"\n🌐 Step 1: Crawling {url}")
-    #download_html_assets_recursive(url)
+    # print(f"\n🌐 Step 1: Crawling {url}")
+    # download_html_assets_recursive(url)
 
-    #print("📂 Step 2: Loading HTML files...")
-    #html_files = load_html_files_from_directory(HTML_DIR)
-    #print(f"  └ Loaded {len(html_files)} HTML file(s)")
+    # print("📂 Step 2: Loading HTML files...")
+    # html_files = load_html_files_from_directory(HTML_DIR)
+    # print(f"  └ Loaded {len(html_files)} HTML file(s)")
 
     all_text_segments = []
     all_ids = []
 
     print("📝 Step 3: Extracting text segments from HTML...")
 
-    if(url != "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"):
+    if url != "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes":
         segments = extract_text_from_html(url)
     else:
         segments = extract_prayer_times_and_contact()
-        #print(f"  └ File {i}: extracted {len(segments)} segments")
+        # print(f"  └ File {i}: extracted {len(segments)} segments")
     all_text_segments.extend(segments)
     all_ids.extend([f"doc_{i}_{j}" for j in range(len(segments))])
 
@@ -251,15 +278,22 @@ def html_to_chroma_pipeline(url: str, i: int) -> bool:
     print("✅ Pipeline complete!")
 
     segments123 = extract_text_from_html(url)
-    if all(""""The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas. Along with providing daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling.""" not in element for element in segments123): 
+    if all(
+        """"The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas. Along with providing daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling."""
+        not in element
+        for element in segments123
+    ):
         return True
     return False
+
 
 if __name__ == "__main__":
     # Start crawling from homepage instead of just /programs/events
     website_url = "https://friscomasjid.org"
-    domain = "https://friscomasjid.org" 
-    filtered_links = {"https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"}
+    domain = "https://friscomasjid.org"
+    filtered_links = {
+        "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"
+    }
     filtered_links.update(get_filtered_absolute_links(website_url, domain))
     for element in filtered_links:
         print(element)
@@ -267,11 +301,11 @@ if __name__ == "__main__":
     bad_links = []
     for i, link in enumerate(filtered_links):
         bad_links.append(link)
-        if(html_to_chroma_pipeline(link, i)):
-            counter+=1
+        if html_to_chroma_pipeline(link, i):
+            counter += 1
             bad_links.remove(link)
     print(counter)
     print(bad_links)
     print()
     print()
-        
+    print(the_bad_list)
