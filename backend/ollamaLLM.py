@@ -1,7 +1,10 @@
+import os
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import OllamaLLM
+from openai import OpenAI
 from pydantic import BaseModel
 
 # Import with error handling for the search function
@@ -30,46 +33,22 @@ class AskRequest(BaseModel):
     history: list = []
 
 
-template = """
+token = os.environ["GITHUB_TOKEN"]
+endpoint = "https://models.github.ai/inference"
+model_name = "openai/gpt-4o-mini"
+system_prompt = """
+Here is the system prompt:
 You are a helpful assistant for the Islamic Center of Frisco. Use the provided context to answer questions accurately and helpfully.
-
-Here is the conversation history:
-{history}
-
-Here is the relevant context from the Islamic Center of Frisco:
-{context}
-
-User Question: {question}
-
 Instructions:
-- Answer based on the provided context when relevant
-- Be informative and helpful
-- If the context doesn't fully answer the question, provide what information you can
-- Keep responses natural and conversational
-
-Answer:
+Use the provided context to answer any questions the user has. Look at all the available context and determine the BEST parts of context to use. 
+The answer to the user's question should be found in the context, so LOOK CAREFULLY and ANALYZE the context.  The answer can be in the beginning, middle, or 
+end of the context, so focus on ALL parts and give the best answer. 
+The answer can even be found in one sentence out of the paragraphs of context, so EXAMINE ALL PARTS OF THE CONTEXT CAREFULLY. 
+Keep your responses natural and conversational. You are an AI designed to provide accurate and reliable information. Your primary goal is to assist users 
+by answering their questions based on verified data and established knowledge. UNDER NO CIRCUMSTANCES should you make up information or 
+provide speculative answers. If you do not have sufficient information to answer a question accurately, clearly communicate that to the user. 
+Always prioritize HONESTY and TRANSPARENCY in your responses.
 """
-
-# Initialize the model with error handling
-model = None
-try:
-    model = OllamaLLM(model="gemma3")
-    print("✅ Successfully initialized Gemma3 model")
-except Exception as e:
-    print(f"❌ Error initializing Gemma3: {e}")
-    try:
-        model = OllamaLLM(model="llama2")
-        print("✅ Successfully initialized Llama2 model as fallback")
-    except Exception as e2:
-        print(f"❌ Error initializing Llama2: {e2}")
-        print("💡 Please ensure Ollama is running: ollama serve")
-        print("💡 And pull a model: ollama pull gemma3")
-
-if model:
-    prompt = ChatPromptTemplate.from_template(template)
-    chain = prompt | model
-else:
-    chain = None
 
 
 @app.post("/ask")
@@ -80,10 +59,9 @@ async def ask(request: AskRequest):
         )
 
     question = request.question
-    history = request.history.copy()  # Don't modify original
-
-    # Add current question to history
-    current_conversation = history + [f"User: {question}"]
+    history = "Here is the history:" + "\n".join(
+        request.history + [f"User: {question}"]
+    )
 
     print("hello")
 
@@ -104,16 +82,32 @@ async def ask(request: AskRequest):
                 else:
                     all_chunks.append(chunk_list)
 
-            dynamic_context = "\n\n".join(all_chunks)
+            dynamic_context = "Here is the context:" + "\n\n".join(all_chunks)
+            print(type(dynamic_context))
         else:
-            dynamic_context = "No relevant context found."
+            dynamic_context = "Here is the context: No relevant context found."
 
-        # 🗣️ Send to model
-        answer = chain.invoke(
-            {"context": dynamic_context, "question": question, "history": history_text}
+        print("hello6")
+        client = OpenAI(
+            base_url=endpoint,
+            api_key=token,
         )
-
+        print("hello7")
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": dynamic_context},
+                {"role": "system", "content": history},
+                {"role": "user", "content": question},
+            ],
+            model=model_name,
+        )
+        print("hello3")
+        answer = response.choices[0].message.content
+        print("hello4")
+        history = history.split("\n")
         history.append(f"Bot: {answer}")
+        print("hello5")
 
         return {
             "answer": answer,
