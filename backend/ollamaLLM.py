@@ -15,6 +15,7 @@ except ImportError as e:
 
 app = FastAPI()
 
+#Allow requests frmo anywhere - I believe this is needed to run the code locally but would not be good for making this public
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -27,9 +28,11 @@ class AskRequest(BaseModel):
     question: str
     history: list = []
 
+#System prompt and setting up Github 4.1-mini model
 token = os.environ["GITHUB_TOKEN"]
 endpoint = "https://models.github.ai/inference"
-model_name = "openai/gpt-4o-mini"
+#model_name = "openai/gpt-4o-mini"
+model_name = "openai/gpt-4.1-mini"
 system_prompt = """
 Here is the system prompt:
 You are a helpful assistant for the Islamic Center of Frisco. Use the provided context to answer questions accurately and helpfully.
@@ -47,16 +50,12 @@ Always prioritize HONESTY and TRANSPARENCY in your responses.
 @app.post('/ask')
 async def ask(request: AskRequest):
     question = request.question
+    # Maybe make context a queue of most recent responses to avoid infinitely long context
     history = "Here is the history:" + '\n'.join(request.history + [f"User: {question}"])
-
-    print("hello")
 
     try:
         # 🧠 Use Chroma to fetch relevant context
         relevant_chunks = search_chroma(question)
-        print("hello2")
-        print(relevant_chunks)
-
         # 🔗 Process the returned chunks
         # search_chroma returns results["documents"] which is a list of lists
         if relevant_chunks and len(relevant_chunks) > 0:
@@ -69,16 +68,14 @@ async def ask(request: AskRequest):
                     all_chunks.append(chunk_list)
             
             dynamic_context = "Here is the context:" + "\n\n".join(all_chunks)
-            print(type(dynamic_context))
         else:
             dynamic_context = "Here is the context: No relevant context found."
 
-        print("hello6")
+        #Create connection to OpenAI with API key and give it all the relevant info
         client = OpenAI(
             base_url=endpoint,
             api_key=token,
         )
-        print("hello7")
         response = client.chat.completions.create(
             messages=[
                 {
@@ -100,19 +97,16 @@ async def ask(request: AskRequest):
             ],
             model=model_name
         )
-        print("hello3")
         answer = response.choices[0].message.content
-        print("hello4")
         history = history.split('\n')
-        history.append(f"Bot: {answer}")
-        print("hello5")
-        
+        history.append(f"Bot: {answer}")        
         return {
             'answer': answer, 
             'history': history,
             'context_chunks_found': len(relevant_chunks) if relevant_chunks else 0
         }
 
+    # Add timeout of ~30 seconds
     except Exception as e:
         print(f"Error in ask endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

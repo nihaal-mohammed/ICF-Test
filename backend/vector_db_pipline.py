@@ -1,6 +1,5 @@
 import os
 from typing import List
-
 import chromadb
 import requests
 from bs4 import BeautifulSoup
@@ -14,44 +13,11 @@ from urllib.parse import urljoin, urlparse
 VISITED = set()
 
 header_and_footer = True
-
-def is_internal(url):
-    return urlparse(url).netloc in ("friscomasjid.org", "www.friscomasjid.org")
-
-
-def sanitize_filename(url):
-    path = urlparse(url).path.strip("/").replace("/", "_")
-    return path or "index"
-
-
-def download_html_assets_recursive(url: str, save_dir: str = HTML_DIR):
-    if url in VISITED or not is_internal(url):
-        return
-    VISITED.add(url)
-
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Save page
-        os.makedirs(save_dir, exist_ok=True)
-        filename = sanitize_filename(url) + ".html"
-        with open(os.path.join(save_dir, filename), "w", encoding="utf-8") as f:
-            f.write(response.text)
-        print(f"[✓] Saved: {url}")
-
-        # Recurse
-        for link in soup.find_all("a", href=True):
-            next_url = urljoin(url, link["href"])
-            download_html_assets_recursive(next_url, save_dir)
-
-    except Exception as e:
-        print(f"[✗] Failed at {url}: {e}")
         
 def get_filtered_absolute_links(url, domain):
+    
+    # Collect all the URLs on each page and go through them, adding them to a list to be scraped if they start with friscomasjid.org 
     try:
-        counter = 0
         response = requests.get(url)
         response.raise_for_status()  
 
@@ -66,62 +32,37 @@ def get_filtered_absolute_links(url, domain):
             if href:
                 absolute_link = urljoin(url, href) 
                 if (absolute_link.startswith(domain) and not any(absolute_link.endswith(ext) for ext in excluded_extensions)):
-                    print(absolute_link)
                     absolute_links.add(absolute_link)
-                    counter+=1
-        print(len(absolute_links))
-        return absolute_links
 
+        return absolute_links
     except requests.RequestException as e:
         print(f"Error fetching {url}: {e}")
         return {}
 
-
-def load_html_files_from_directory(directory: str) -> list[str]:
-    """
-    Loads all HTML files from a specified directory.
-
-    Args:
-        directory (str): Path to the directory containing HTML files.
-
-    Returns:
-        List[str]: A list of HTML strings loaded from the files.
-    """
-    html_contents = []
-
-    if not os.path.exists(directory):
-        print(f"[✗] Directory '{directory}' does not exist.")
-        return []
-
-    for filename in os.listdir(directory):
-        if filename.endswith(".html") or filename.endswith(".htm"):
-            filepath = os.path.join(directory, filename)
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    html_contents.append(f.read())
-            except Exception as e:
-                print(f"[✗] Could not read {filename}: {e}")
-
-    print(f"[✓] Loaded {len(html_contents)} HTML file(s) from '{directory}'")
-    return html_contents
-
-
 def extract_text_from_html(html_content: str) -> List[str]:
     from itertools import chain
 
-    def chunk_text(texts: List[str], chunk_size=250, overlap=50) -> List[str]:
+    def chunk_text(texts: List[str], link: str, chunk_size=250, overlap=50) -> List[str]:
         """
         Combine and chunk text segments into overlapping chunks of words.
         """
+        # Chunks of size <= 280  words, with an overlap of 50 going into the next chunk (for text with length of 300 words, the first chunk will be 250 words and
+        # the second shunk will start from the 200th word of the first chunk to be 100 words) 
         all_text = " ".join(texts)
         words = all_text.split()
         chunks = []
         for i in range(0, len(words), chunk_size - overlap):
             chunk = words[i : i + chunk_size]
             if len(chunk) >= 30:
-                chunks.append(" ".join(chunk))
+                chunks.append(link + " " + " ".join(chunk))
+            else:
+                if chunks:
+                    chunks[-1] += " ".join(chunk)
+                else:
+                    chunks.append(link + " " + " ".join(chunk))
         return chunks
     
+    # Get text from website
     response = requests.get(html_content)
     html = response.text
 
@@ -140,23 +81,20 @@ def extract_text_from_html(html_content: str) -> List[str]:
     texts = soup.find_all(string=True)
     visible_texts = filter(tag_visible, texts)
     visible_strings = [t.strip() for t in visible_texts if t.strip()]
+
+    #Filter out header and footer text
     visible_strings = visible_strings[265:]
     visible_strings = visible_strings[:-23]
 
     # Chunk long combined text
-    chunked_segments = chunk_text(visible_strings)
-
-    for text in visible_strings:
-        print(text)
-
-    print(chunked_segments)
+    chunked_segments = chunk_text(visible_strings, html_content)
 
     return list(set(chunked_segments))
 
 
 def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
     """
-    Converts a list of text segments into embeddings using OpenAI.
+    Converts a list of text segments into embeddings using Qwen.
 
     Args:
         text_segments (List[str]): List of textual content to vectorize.
@@ -164,7 +102,8 @@ def vectorize_text_segments(text_segments: List[str]) -> List[List[float]]:
     Returns:
         List[List[float]]: A list of vector embeddings.
     """
-    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+    model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B")
     embeddings = model.encode(text_segments, convert_to_numpy=True).tolist()
     return embeddings
 
@@ -200,6 +139,7 @@ def upload_embeddings_to_chroma(
         print(f"[✗] Failed to upload to ChromaDB: {e}")
 
 def extract_prayer_times_and_contact():
+    # Gets text from madinaapps for prayer times and uploads static info about Frisco Masjid
     response = requests.get("https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes")
     contact_string = """
     About Us The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas.  Along with providing
@@ -208,29 +148,23 @@ def extract_prayer_times_and_contact():
     Contact Us Address: 11137 Frisco St, Frisco TX 75033 Main Phone: (469) 252-4532 | Clinic Phone: (469) 213-8707 | contact@friscomasjid.org EIN: 20-8679388
     """
     upload_embeddings_to_chroma(vectorize_text_segments(contact_string), contact_string, "doc_-1_-1")
-    return response.text.split("]")
+    return [response.text]
 
-def html_to_chroma_pipeline(url: str, i: int) -> bool:
-    #print(f"\n🌐 Step 1: Crawling {url}")
-    #download_html_assets_recursive(url)
-
-    #print("📂 Step 2: Loading HTML files...")
-    #html_files = load_html_files_from_directory(HTML_DIR)
-    #print(f"  └ Loaded {len(html_files)} HTML file(s)")
-
+def html_to_chroma_pipeline(url: str, i: int):
     all_text_segments = []
     all_ids = []
 
-    print("📝 Step 3: Extracting text segments from HTML...")
+    print("📝 Step 3: Extracting text segments from link...")
 
+    # Calls method to extract text from wesbite
     if(url != "https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"):
         segments = extract_text_from_html(url)
     else:
         segments = extract_prayer_times_and_contact()
-        #print(f"  └ File {i}: extracted {len(segments)} segments")
     all_text_segments.extend(segments)
     all_ids.extend([f"doc_{i}_{j}" for j in range(len(segments))])
 
+    # If the link has no text , return nothing
     if not all_text_segments:
         print("[✗] No text segments extracted. Exiting.")
         return
@@ -250,28 +184,19 @@ def html_to_chroma_pipeline(url: str, i: int) -> bool:
 
     print("✅ Pipeline complete!")
 
-    segments123 = extract_text_from_html(url)
-    if all(""""The Islamic Center of Frisco was established in May 2007. We are located approximately 27 miles north of downtown Dallas. Along with providing daily prayer facilities, ICF also offers various Islamic education services including our successful Quran Academy, Sunday School, and Safwah Seminary educational programs, a vibrant youth group, educational seminars, youth and adult education classes, summer school, nikkah services, and Islamic counseling.""" not in element for element in segments123): 
-        return True
-    return False
-
 if __name__ == "__main__":
-    # Start crawling from homepage instead of just /programs/events
+    # Delete initial ChromaDB collection   
+    client = chromadb.PersistentClient(path="chroma")
+    collection = client.get_or_create_collection(name="frisco_events")
+    client.delete_collection("frisco_events")
     website_url = "https://friscomasjid.org"
     domain = "https://friscomasjid.org" 
     filtered_links = {"https://services.madinaapps.com/kiosk-rest/clients/242/prayerTimes"}
     filtered_links.update(get_filtered_absolute_links(website_url, domain))
-    for element in filtered_links:
-        print(element)
-    counter = 0
-    bad_links = []
     for i, link in enumerate(filtered_links):
-        bad_links.append(link)
-        if(html_to_chroma_pipeline(link, i)):
-            counter+=1
-            bad_links.remove(link)
-    print(counter)
-    print(bad_links)
-    print()
-    print()
+        html_to_chroma_pipeline(link, i)
+
         
+
+
+

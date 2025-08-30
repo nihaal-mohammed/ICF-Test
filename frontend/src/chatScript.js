@@ -31,7 +31,7 @@ const ChatComponent = () => {
     } else {
       input.style.height = `${maxHeight}px`;
       input.style.overflowY = "auto";
-      setChatDisplayHeight((isLarge ? 600 : 400) - (maxHeight - baseHeight));
+      setChatDisplayHeight((isLarge ? 600 : 400) - (maxHeight - baseHeight)); 
     }
   };
 
@@ -132,8 +132,8 @@ const ChatComponent = () => {
         <div
           className="chat-container expanded-chat"
           style={{
-            width: isLarge ? "500px" : "360px",
-            height: isLarge ? "700px" : "500px"
+            width: isLarge ? "600px" : "360px",
+            height: isLarge ? "600px" : "500px"
           }}
         >
           <button
